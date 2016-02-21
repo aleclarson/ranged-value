@@ -1,7 +1,7 @@
 
 { NativeValue } = require "component"
 
-ReactiveGetter = require "reactive-getter"
+ReactiveGetter = require "ReactiveGetter"
 Interpolation = require "Interpolation"
 emptyFunction = require "emptyFunction"
 Listenable = require "listenable"
@@ -15,10 +15,12 @@ module.exports = Factory "RangedValue",
   create: -> {} # Pretending to inherit from NativeValue.
 
   optionTypes:
-    get: Function
+    value: [ NativeValue, Number, Void ]
+    reaction: [ Reaction, Void ]
+    get: [ Function, Void ]
+    didSet: [ Function, Void ]
     range: Array
-    dampen: Array
-    didSet: Function
+    dampen: [ Array, Void ]
 
   optionDefaults:
     dampen: [ 0, 0 ]
@@ -26,55 +28,84 @@ module.exports = Factory "RangedValue",
 
   customValues:
 
-    minValue: get: ->
-      @_range[0]
+    value: get: ->
+      @_reaction.value
 
-    maxValue: get: ->
-      @_range[1]
+    minValue:
+      get: -> @range[0]
+      set: (minValue) ->
+        @range[0] = minValue
 
+    maxValue:
+      get: -> @range[1]
+      set: (maxValue) ->
+        @range[1] = maxValue
+
+    # Matches the NativeValue API.
     getValue: lazy: ->
       return => @value
 
-  initFrozenValues: (options) ->
-    _get: ReactiveGetter options.get
+    dampen:
+      value: null
+      didSet: (dampen) ->
+        @_dampen = @_createDampener()
+
+  initValues: (options) ->
+    range: options.range
+    reaction: options.reaction
+    nativeValue: NativeValue options.value if options.value?
+    _get: options.get
     _didSet: options.didSet
-    _range: options.range
-    _dampen: @_createDampener options.dampen
+    _reaction: null
+    _dampen: null
 
-  initReactiveValues: (options) ->
+  init: (options) ->
 
-    value: Reaction.sync
-      get: => @_dampen @_get()
-      didSet: (newValue) =>
-        @_didSet newValue
+    Listenable this, { eventNames: yes }
+
+    @dampen = options.dampen
+
+    if @_get?
+      # no-op
+    else if @nativeValue?
+      @_get = @nativeValue.getValue
+    else if @reaction?
+      @_get = => @reaction.value
+
+    @_reaction = Reaction.sync
+      get: =>
+        value = @_get()
+        if value? then @_dampen value
+        else null
+      didSet: (newValue, oldValue) =>
+        @_didSet newValue, oldValue
         @_emit "didSet", newValue
-
-  init: ->
-
-    Listenable this
 
   getProgress: ({ clamp } = {}) ->
     progress = (@value - @minValue) / (@maxValue - @minValue)
     return progress unless clamp
     Math.max 0, Math.min 1, progress
 
+  # Matches the NativeValue API.
   detach: ->
     # TODO Remove reaction?
 
-  _createDampener: (dampenValues) ->
+  _createDampener: ->
+
+    [ min, max] = @dampen
 
     return Interpolation.create
 
       inputRange: [
-        @minOffset - 10
-        @minOffset
-        @maxOffset
-        @maxOffset + 10
+        @minValue - 10
+        @minValue
+        @maxValue
+        @maxValue + 10
       ]
 
       outputRange: [
-        @minOffset - if dampenValues[0] is 0 then 0 else Math.pow 10, dampenValues[0]
-        @minOffset
-        @maxOffset
-        @maxOffset + if dampenValues[1] is 0 then 0 else Math.pow 10, dampenValues[1]
+        @minValue - if min is 0 then 0 else Math.pow 10, min
+        @minValue
+        @maxValue
+        @maxValue + if max is 0 then 0 else Math.pow 10, max
       ]
