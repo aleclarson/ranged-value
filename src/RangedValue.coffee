@@ -5,6 +5,7 @@ ReactiveGetter = require "ReactiveGetter"
 Interpolation = require "Interpolation"
 emptyFunction = require "emptyFunction"
 Listenable = require "listenable"
+Progress = require "progress"
 Reaction = require "reaction"
 Factory = require "factory"
 
@@ -70,7 +71,7 @@ module.exports = Factory "RangedValue",
     else if @nativeValue?
       @_get = @nativeValue.getValue
     else if @reaction?
-      @_get = => @reaction.value
+      @_get = @reaction.getValue
 
     @_reaction = Reaction.sync
       get: =>
@@ -81,10 +82,12 @@ module.exports = Factory "RangedValue",
         @_didSet newValue, oldValue
         @_emit "didSet", newValue
 
-  getProgress: ({ clamp } = {}) ->
-    progress = (@value - @minValue) / (@maxValue - @minValue)
-    return progress unless clamp
-    Math.max 0, Math.min 1, progress
+  getProgress: (options = {}) ->
+    validateTypes options,
+      clamp: [ Boolean, Void ]
+    options.from = @minValue
+    options.to = @maxValue
+    Progress.fromValue @value, options
 
   # Matches the NativeValue API.
   detach: ->

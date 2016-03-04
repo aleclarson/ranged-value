@@ -1,4 +1,4 @@
-var Factory, Interpolation, Listenable, NativeValue, Reaction, ReactiveGetter, emptyFunction;
+var Factory, Interpolation, Listenable, NativeValue, Progress, Reaction, ReactiveGetter, emptyFunction;
 
 NativeValue = require("component").NativeValue;
 
@@ -9,6 +9,8 @@ Interpolation = require("Interpolation");
 emptyFunction = require("emptyFunction");
 
 Listenable = require("listenable");
+
+Progress = require("progress");
 
 Reaction = require("reaction");
 
@@ -90,11 +92,7 @@ module.exports = Factory("RangedValue", {
     } else if (this.nativeValue != null) {
       this._get = this.nativeValue.getValue;
     } else if (this.reaction != null) {
-      this._get = (function(_this) {
-        return function() {
-          return _this.reaction.value;
-        };
-      })(this);
+      this._get = this.reaction.getValue;
     }
     return this._reaction = Reaction.sync({
       get: (function(_this) {
@@ -116,14 +114,16 @@ module.exports = Factory("RangedValue", {
       })(this)
     });
   },
-  getProgress: function(arg) {
-    var clamp, progress;
-    clamp = (arg != null ? arg : {}).clamp;
-    progress = (this.value - this.minValue) / (this.maxValue - this.minValue);
-    if (!clamp) {
-      return progress;
+  getProgress: function(options) {
+    if (options == null) {
+      options = {};
     }
-    return Math.max(0, Math.min(1, progress));
+    validateTypes(options, {
+      clamp: [Boolean, Void]
+    });
+    options.from = this.minValue;
+    options.to = this.maxValue;
+    return Progress.fromValue(this.value, options);
   },
   detach: function() {},
   _createDampener: function() {
