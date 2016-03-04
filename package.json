@@ -1,0 +1,13 @@
+{
+  "name": "ranged-value",
+  "version": "1.0.0",
+  "main": "./js/src/RangedValue",
+  "dependencies": {
+    "ReactiveGetter": "aleclarson/ReactiveGetter#1.0.0",
+    "component": "aleclarson/component#1.0.0",
+    "emptyFunction": "aleclarson/emptyFunction#1.0.0",
+    "factory": "aleclarson/factory#1.0.0",
+    "listenable": "aleclarson/listenable#1.0.0",
+    "reaction": "aleclarson/reaction#1.0.0"
+  }
+}
